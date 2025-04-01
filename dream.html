@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream Sequencer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .dream-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .dream-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .controls {
+            position: relative;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.5);
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        h1 {
+            margin-top: 0;
+            color: #0bf;
+            text-shadow: 0 0 10px rgba(0, 191, 255, 0.7);
+        }
+        
+        .seed-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #111;
+            color: #0bf;
+            box-sizing: border-box;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .seed-input:focus {
+            outline: none;
+            box-shadow: 0 0 8px #0bf;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #0077cc;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #0099ff;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 119, 204, 0.5);
+        }
+        
+        .seed-history {
+            max-height: 100px;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+        }
+        
+        .history-entry {
+            padding: 5px;
+            margin: 5px 0;
+            background-color: rgba(0, 119, 204, 0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .history-entry:hover {
+            background-color: rgba(0, 119, 204, 0.5);
+        }
+        
+        .instructions {
+            font-size: 14px;
+            margin-top: 15px;
+            color: #aaa;
+        }
+        
+        .audio-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .volume-control {
+            width: 100px;
+            -webkit-appearance: none;
+            height: 5px;
+            background: #333;
+            border-radius: 5px;
+        }
+        
+        .volume-control::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #0bf;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .sound-label {
+            font-size: 14px;
+            color: #0bf;
+        }
+    </style>
+</head>
+<body>
+    <div class="dream-container">
+        <canvas class="dream-canvas" id="dreamCanvas"></canvas>
+        
+        <div class="controls">
+            <h1>Dream Sequencer</h1>
+            
+            <input 
+                type="text" 
+                id="seedInput" 
+                class="seed-input" 
+                placeholder="Enter a dream seed phrase..." 
+                value="cosmic voyage"
+            >
+            
+            <div class="buttons">
+                <button id="generateBtn">Generate Dream</button>
+                <button id="saveBtn">Save Dream</button>
+                <button id="randomBtn">Random Dream</button>
+            </div>
+            
+            <div class="audio-controls">
+                <span class="sound-label">Sound:</span>
+                <button id="toggleAudio">Play</button>
+                <input type="range" id="volumeControl" class="volume-control" min="0" max="100" value="50">
+            </div>
+            
+            <div class="seed-history" id="seedHistory">
+                <div class="history-entry" data-seed="cosmic voyage">cosmic voyage</div>
+            </div>
+            
+            <div class="instructions">
+                Enter a dream seed phrase above and click "Generate Dream" to create a unique visual sequence based on your words. Each seed creates a different pattern and sound. Save your favorites to revisit them later.
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Get DOM elements
+        const canvas = document.getElementById('dreamCanvas');
+        const ctx = canvas.getContext('2d');
+        const seedInput = document.getElementById('seedInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const seedHistory = document.getElementById('seedHistory');
+        const toggleAudio = document.getElementById('toggleAudio');
+        const volumeControl = document.getElementById('volumeControl');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        // Call resize initially and on window resize
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Particle system
+        class ParticleSystem {
+            constructor() {
+                this.particles = [];
+                this.maxParticles = 200;
+                this.baseHue = 200;
+                this.hueRange = 60;
+                this.speed = 2;
+                this.size = 3;
+                this.decay = 0.015;
+                this.complexity = 2;
+                this.noiseScale = 0.01;
+            }
+            
+            // Generate particles based on seed
+            generateFromSeed(seed) {
+                // Clear existing particles
+                this.particles = [];
+                
+                // Use the seed to determine properties
+                let seedValue = this.hashString(seed);
+                
+                // Set system properties based on seed
+                this.baseHue = (seedValue % 360);
+                this.hueRange = 30 + (seedValue % 70);
+                this.speed = 1 + (seedValue % 4);
+                this.size = 2 + (seedValue % 5);
+                this.complexity = 1 + (seedValue % 5) / 2;
+                this.decay = 0.01 + (seedValue % 3) / 100;
+                this.noiseScale = 0.005 + (seedValue % 10) / 1000;
+                
+                // Generate initial particles
+                for (let i = 0; i < this.maxParticles; i++) {
+                    this.addParticle(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height
+                    );
+                }
+            }
+            
+            // Hash string to number for seeding
+            hashString(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+            
+            // Add a new particle
+            addParticle(x, y) {
+                const hue = this.baseHue + (Math.random() * this.hueRange * 2) - this.hueRange;
+                
+                this.particles.push({
+                    x,
+                    y,
+                    size: this.size + Math.random() * 2,
+                    hue,
+                    alpha: 0.5 + Math.random() * 0.5,
+                    speedX: (Math.random() - 0.5) * this.speed,
+                    speedY: (Math.random() - 0.5) * this.speed,
+                    life: 0.9 + Math.random() * 0.1
+                });
+            }
+            
+            // Update particle system
+            update(mouseX, mouseY) {
+                // Add new particles at mouse position if available
+                if (mouseX !== null && mouseY !== null) {
+                    for (let i = 0; i < 3; i++) {
+                        this.addParticle(
+                            mouseX + (Math.random() - 0.5) * 20,
+                            mouseY + (Math.random() - 0.5) * 20
+                        );
+                    }
+                }
+                
+                // Update all particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    
+                    // Update position with perlin-like noise (simulated)
+                    const noiseOffsetX = Math.sin(p.x * this.noiseScale) * Math.cos(p.y * this.noiseScale) * this.complexity;
+                    const noiseOffsetY = Math.cos(p.x * this.noiseScale) * Math.sin(p.y * this.noiseScale) * this.complexity;
+                    
+                    p.x += p.speedX + noiseOffsetX;
+                    p.y += p.speedY + noiseOffsetY;
+                    
+                    // Update life
+                    p.life -= this.decay;
+                    p.alpha = p.life * 0.8;
+                    
+                    // Remove dead particles
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                        
+                        // Add new random particle to maintain count
+                        this.addParticle(
+                            Math.random() * canvas.width,
+                            Math.random() * canvas.height
+                        );
+                    }
+                }
+            }
+            
+            // Draw particles
+            draw() {
+                ctx.globalCompositeOperation = 'screen';
+                
+                this.particles.forEach(p => {
+                    ctx.beginPath();
+                    
+                    // Create gradient for particle
+                    const gradient = ctx.createRadialGradient(
+                        p.x, p.y, 0,
+                        p.x, p.y, p.size
+                    );
+                    
+                    gradient.addColorStop(0, `hsla(${p.hue}, 100%, 70%, ${p.alpha})`);
+                    gradient.addColorStop(1, `hsla(${p.hue}, 100%, 50%, 0)`);
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+        
+        // Audio system
+        class DreamAudio {
+            constructor() {
+                this.audioContext = null;
+                this.oscillators = [];
+                this.gainNode = null;
+                this.isPlaying = false;
+                this.baseFrequency = 150;
+                this.maxOscillators = 5;
+                this.volume = 0.5;
+            }
+            
+            // Initialize audio context
+            initAudio() {
+                if (!this.audioContext) {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.gainNode = this.audioContext.createGain();
+                    this.gainNode.gain.value = this.volume;
+                    this.gainNode.connect(this.audioContext.destination);
+                }
+            }
+            
+            // Generate sound from seed
+            generateFromSeed(seed) {
+                this.stopSound();
+                
+                if (!this.audioContext) {
+                    this.initAudio();
+                }
+                
+                // Use seed to determine sound properties
+                let seedValue = this.hashString(seed);
+                this.baseFrequency = 120 + (seedValue % 200);
+                
+                // Number of oscillators based on seed complexity
+                const oscillatorCount = 2 + (seedValue % (this.maxOscillators - 1));
+                
+                // Create oscillators
+                for (let i = 0; i < oscillatorCount; i++) {
+                    const osc = this.audioContext.createOscillator();
+                    
+                    // Different oscillator types
+                    const types = ['sine', 'triangle', 'sawtooth'];
+                    osc.type = types[i % types.length];
+                    
+                    // Calculate frequency based on position and seed
+                    const frequencyOffset = (seedValue % 100) / 10;
+                    const harmonicRatio = 1 + (i * (0.5 + (seedValue % 10) / 20));
+                    osc.frequency.value = this.baseFrequency * harmonicRatio + frequencyOffset;
+                    
+                    // Create individual gain for this oscillator
+                    const gainNode = this.audioContext.createGain();
+                    gainNode.gain.value = 0.2 / oscillatorCount;
+                    
+                    // Connect and store
+                    osc.connect(gainNode);
+                    gainNode.connect(this.gainNode);
+                    
+                    this.oscillators.push({
+                        oscillator: osc,
+                        gain: gainNode
+                    });
+                }
+            }
+            
+            // Hash string to number
+            hashString(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+            
+            // Start playing sound
+            playSound() {
+                if (!this.isPlaying && this.oscillators.length > 0) {
+                    const now = this.audioContext.currentTime;
+                    
+                    this.oscillators.forEach((osc, i) => {
+                        osc.oscillator.start(now);
+                        
+                        // Slight delay between oscillators for interesting effect
+                        osc.gain.gain.setValueAtTime(0, now);
+                        osc.gain.gain.linearRampToValueAtTime(
+                            0.2 / this.oscillators.length,
+                            now + 0.1 + (i * 0.1)
+                        );
+                    });
+                    
+                    this.isPlaying = true;
+                    toggleAudio.textContent = "Pause";
+                }
+            }
+            
+            // Stop sound
+            stopSound() {
+                if (this.isPlaying) {
+                    const now = this.audioContext.currentTime;
+                    
+                    this.oscillators.forEach(osc => {
+                        // Fade out
+                        osc.gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                        osc.oscillator.stop(now + 0.2);
+                    });
+                    
+                    this.oscillators = [];
+                    this.isPlaying = false;
+                    toggleAudio.textContent = "Play";
+                }
+            }
+            
+            // Toggle sound
+            toggleSound() {
+                if (this.isPlaying) {
+                    this.stopSound();
+                } else {
+                    this.playSound();
+                }
+            }
+            
+            // Set volume
+            setVolume(value) {
+                this.volume = value;
+                if (this.gainNode) {
+                    this.gainNode.gain.value = this.volume;
+                }
+            }
+        }
+        
+        // Initialize systems
+        const particleSystem = new ParticleSystem();
+        const dreamAudio = new DreamAudio();
+        
+        // Store mouse position
+        let mouseX = null;
+        let mouseY = null;
+        
+        // Track mouse movement
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mouseout', () => {
+            mouseX = null;
+            mouseY = null;
+        });
+        
+        // Touch support
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            mouseX = e.touches[0].clientX;
+            mouseY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            mouseX = null;
+            mouseY = null;
+        });
+        
+        // Saved dream history
+        const dreamHistory = new Set();
+        dreamHistory.add("cosmic voyage");
+        
+        // Generate dream from input
+        function generateDream() {
+            const seed = seedInput.value.trim() || "dream";
+            particleSystem.generateFromSeed(seed);
+            dreamAudio.generateFromSeed(seed);
+            
+            // Add to history if not already there
+            if (!dreamHistory.has(seed)) {
+                addToHistory(seed);
+                dreamHistory.add(seed);
+            }
+        }
+        
+        // Add seed to history display
+        function addToHistory(seed) {
+            const entry = document.createElement('div');
+            entry.className = 'history-entry';
+            entry.textContent = seed;
+            entry.dataset.seed = seed;
+            seedHistory.appendChild(entry);
+            
+            entry.addEventListener('click', () => {
+                seedInput.value = seed;
+                generateDream();
+            });
+        }
+        
+        // Random seed generator
+        function generateRandomSeed() {
+            const words = [
+                'cosmic', 'ocean', 'ethereal', 'mystic', 'nebula', 
+                'whisper', 'crystal', 'shadow', 'ancient', 'stellar',
+                'aurora', 'voyage', 'emerald', 'phantom', 'tranquil',
+                'eclipse', 'astral', 'twilight', 'radiant', 'obsidian'
+            ];
+            
+            const adjective = words[Math.floor(Math.random() * words.length)];
+            const noun = words[Math.floor(Math.random() * words.length)];
+            
+            return `${adjective} ${noun}`;
+        }
+        
+        // Main animation loop
+        function animate() {
+            // Clear canvas with fade effect for trails
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw particle system
+            particleSystem.update(mouseX, mouseY);
+            particleSystem.draw();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Event listeners
+        generateBtn.addEventListener('click', generateDream);
+        
+        seedInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                generateDream();
+            }
+        });
+        
+        randomBtn.addEventListener('click', () => {
+            const randomSeed = generateRandomSeed();
+            seedInput.value = randomSeed;
+            generateDream();
+        });
+        
+        saveBtn.addEventListener('click', () => {
+            alert("Dream saved to your collection!");
+            const seed = seedInput.value.trim();
+            if (!dreamHistory.has(seed)) {
+                addToHistory(seed);
+                dreamHistory.add(seed);
+            }
+        });
+        
+        toggleAudio.addEventListener('click', () => {
+            dreamAudio.toggleSound();
+        });
+        
+        volumeControl.addEventListener('input', () => {
+            const volume = volumeControl.value / 100;
+            dreamAudio.setVolume(volume);
+        });
+        
+        // Initialize with default seed
+        generateDream();
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
