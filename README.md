@@ -24,12 +24,16 @@ The **Dream Sequencer** is an interactive, web-based tool that allows users to g
 - **CSS**: For styling the page, including animations and responsiveness.
 - **JavaScript**: For creating the particle system, sound generation, and interactive features.
 
-## 📷 Preview
+## 📷 Preview  
 
-![Dream Sequencer Preview](path-to-your-image.png)
+<img src="https://raw.githubusercontent.com/rajnandiniini/Dream/main/images/p1.png" width="300" height="auto">
+<img src="https://raw.githubusercontent.com/rajnandiniini/Dream/main/images/p2.png" width="300" height="auto">
+<img src="https://raw.githubusercontent.com/rajnandiniini/Dream/main/images/p3.png" width="300" height="auto">
+<img src="https://raw.githubusercontent.com/rajnandiniini/Dream/main/images/p4.png" width="300" height="auto">
 
 
 
-## ⚙️ Setup
 
+## ⚙️ Setup  
 
+Try it here: **[Pixel Art Canvas](https://rajnandiniini.github.io/Dream/dream.html)**  
